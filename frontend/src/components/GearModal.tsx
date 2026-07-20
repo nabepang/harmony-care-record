@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import axios from "axios";
+import { X, Plus, Trash2, RotateCcw } from "lucide-react";
 
 interface GearModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedModel: string;
   onSelectModel: (model: string) => void;
+  apiBaseUrl: string;
 }
 
 export const GearModal: React.FC<GearModalProps> = ({
@@ -13,6 +15,7 @@ export const GearModal: React.FC<GearModalProps> = ({
   onClose,
   selectedModel,
   onSelectModel,
+  apiBaseUrl,
 }) => {
   const [models, setModels] = useState<string[]>([]);
   const [newModel, setNewModel] = useState("");
@@ -36,8 +39,31 @@ export const GearModal: React.FC<GearModalProps> = ({
     const savedKey = localStorage.getItem("care_record_gemini_api_key");
     if (savedKey) {
       setApiKey(savedKey);
+    } else if (apiBaseUrl) {
+      // localStorage に未設定の場合、サーバーの .env 内のデフォルトキーを自動取得して設定
+      axios.get(`${apiBaseUrl}/api/config-status`)
+        .then((res) => {
+          if (res.data.status === "success" && res.data.default_gemini_api_key) {
+            setApiKey(res.data.default_gemini_api_key);
+            localStorage.setItem("care_record_gemini_api_key", res.data.default_gemini_api_key);
+          }
+        })
+        .catch((err) => console.error("デフォルトAPIキーの読み込みに失敗しました", err));
     }
-  }, []);
+  }, [apiBaseUrl]);
+
+  const handleResetToDefault = () => {
+    axios.get(`${apiBaseUrl}/api/config-status`)
+      .then((res) => {
+        if (res.data.status === "success" && res.data.default_gemini_api_key) {
+          setApiKey(res.data.default_gemini_api_key);
+          localStorage.setItem("care_record_gemini_api_key", res.data.default_gemini_api_key);
+          setSavedSuccessMsg(true);
+          setTimeout(() => setSavedSuccessMsg(false), 2000);
+        }
+      })
+      .catch((err) => console.error("デフォルトAPIキーのリセットに失敗しました", err));
+  };
 
   const handleSaveApiKey = () => {
     localStorage.setItem("care_record_gemini_api_key", apiKey.trim());
@@ -116,9 +142,16 @@ export const GearModal: React.FC<GearModalProps> = ({
               保存
             </button>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1.5">
-            ※入力するとブラウザに記憶され、独自の API キーで AI 解析を実行できます。
-          </p>
+          <div className="flex items-center justify-between mt-2 text-[11px]">
+            <span className="text-slate-400">※デフォルトは .env のキーが自動設定されています。</span>
+            <button
+              type="button"
+              onClick={handleResetToDefault}
+              className="text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1 font-medium transition-colors"
+            >
+              <RotateCcw size={12} /> .env初期値に戻す
+            </button>
+          </div>
         </div>
 
         {/* AIモデル選択 */}

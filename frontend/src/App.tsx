@@ -84,17 +84,23 @@ function App() {
   }, []);
 
   const checkApiKeyStatus = async () => {
-    const customKey = localStorage.getItem("care_record_gemini_api_key");
-    setHasCustomApiKey(!!customKey && customKey.trim().length > 0);
+    let customKey = localStorage.getItem("care_record_gemini_api_key");
 
     try {
       const res = await axios.get(`${API_BASE_URL}/api/config-status`);
       if (res.data.status === "success") {
         setHasServerApiKey(!!res.data.has_gemini_key);
+        // localStorage にキーがまだ登録されていない場合は .env のデフォルトキーを自動セット
+        if ((!customKey || customKey.trim().length === 0) && res.data.default_gemini_api_key) {
+          localStorage.setItem("care_record_gemini_api_key", res.data.default_gemini_api_key);
+          customKey = res.data.default_gemini_api_key;
+        }
       }
     } catch (e) {
       console.error("Failed to fetch config status", e);
     }
+
+    setHasCustomApiKey(!!customKey && customKey.trim().length > 0);
   };
 
   const hasApiKey = hasServerApiKey || hasCustomApiKey;
@@ -356,6 +362,7 @@ function App() {
         }}
         selectedModel={selectedModel}
         onSelectModel={handleSelectModel}
+        apiBaseUrl={API_BASE_URL}
       />
 
       {/* 競合上書き確認モーダル */}

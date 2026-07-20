@@ -621,6 +621,7 @@ async def get_config_status():
     return {
         "status": "success",
         "has_gemini_key": has_gemini_key,
+        "default_gemini_api_key": GEMINI_API_KEY or "",
         "has_kintone": has_kintone_domain and has_kintone_token
     }
 
