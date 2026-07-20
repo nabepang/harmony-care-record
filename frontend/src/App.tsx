@@ -6,6 +6,7 @@ import { RecordForm } from "./components/RecordForm";
 import type { CareRecordData } from "./components/RecordForm";
 import { GearModal } from "./components/GearModal";
 import { ConflictModal } from "./components/ConflictModal";
+import { TodayRecordViewer } from "./components/TodayRecordViewer";
 
 // バックエンドのURL (開発時は http://127.0.0.1:8000, 本番Vercelでは相対パス "")
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
@@ -116,10 +117,12 @@ function App() {
     
     try {
       const startTime = performance.now();
+      const customApiKey = localStorage.getItem("care_record_gemini_api_key");
       const res = await axios.post(`${API_BASE_URL}/api/analyze-text`, {
         text: inputText,
         model_name: selectedModel,
         user_master: userMaster,
+        api_key: customApiKey || undefined,
       });
       const endTime = performance.now();
       console.log(`AI解析時間: ${(endTime - startTime).toFixed(1)}ms`);
@@ -270,6 +273,12 @@ function App() {
               onChangeText={setInputText}
               onAnalyze={handleAnalyzeText}
               isAnalyzing={isAnalyzing}
+            />
+
+            {/* 本日の kintone 登録データ閲覧ビューアー */}
+            <TodayRecordViewer
+              userMaster={userMaster}
+              apiBaseUrl={API_BASE_URL}
             />
           </div>
         ) : (

@@ -16,8 +16,10 @@ export const GearModal: React.FC<GearModalProps> = ({
 }) => {
   const [models, setModels] = useState<string[]>([]);
   const [newModel, setNewModel] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [savedSuccessMsg, setSavedSuccessMsg] = useState(false);
 
-  // ローカルストレージからモデルリストを読み込む
+  // ローカルストレージからモデルリストおよびAPIキーを読み込む
   useEffect(() => {
     const defaultModels = ["gemini-3.5-flash", "gemini-3.1-pro", "gemini-3.1-flash-lite"];
     const savedModels = localStorage.getItem("care_record_ai_models");
@@ -30,7 +32,18 @@ export const GearModal: React.FC<GearModalProps> = ({
       setModels(defaultModels);
       localStorage.setItem("care_record_ai_models", JSON.stringify(defaultModels));
     }
+
+    const savedKey = localStorage.getItem("care_record_gemini_api_key");
+    if (savedKey) {
+      setApiKey(savedKey);
+    }
   }, []);
+
+  const handleSaveApiKey = () => {
+    localStorage.setItem("care_record_gemini_api_key", apiKey.trim());
+    setSavedSuccessMsg(true);
+    setTimeout(() => setSavedSuccessMsg(false), 2000);
+  };
 
   const handleAddModel = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +90,35 @@ export const GearModal: React.FC<GearModalProps> = ({
           >
             <X size={20} />
           </button>
+        </div>
+
+        {/* Gemini API キー設定 */}
+        <div className="mb-6 border-b border-slate-800 pb-6">
+          <label className="block text-sm font-medium text-slate-300 mb-1.5 flex items-center justify-between">
+            <span>Gemini API キー (任意)</span>
+            {savedSuccessMsg && (
+              <span className="text-xs text-green-400 font-normal">✓ 保存しました</span>
+            )}
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="AIzaSy..."
+              className="flex-1 premium-input px-3 py-2 rounded-lg text-sm border border-slate-700"
+            />
+            <button
+              type="button"
+              onClick={handleSaveApiKey}
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-lg text-xs font-bold transition-all shrink-0"
+            >
+              保存
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1.5">
+            ※入力するとブラウザに記憶され、独自の API キーで AI 解析を実行できます。
+          </p>
         </div>
 
         {/* AIモデル選択 */}

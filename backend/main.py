@@ -48,6 +48,7 @@ class AnalyzeRequest(BaseModel):
     text: str
     model_name: str = "gemini-3.5-flash"  # デフォルトは実在するモデル名にする（呼び出しエラー回避用）
     user_master: List[UserMasterEntry]
+    api_key: Optional[str] = None
 
 # Gemini 構造化出力用の Pydantic モデル
 class CareRecordSchema(BaseModel):
@@ -121,11 +122,14 @@ def get_kintone_headers(token: str, has_body: bool = True) -> Dict[str, str]:
         headers["Content-Type"] = "application/json"
     return headers
 
-def try_gemini_analysis(text: str, model_name: str, system_instruction: str, schema: Any) -> Optional[Dict[str, Any]]:
+def try_gemini_analysis(text: str, model_name: str, system_instruction: str, schema: Any, custom_api_key: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """指定されたモデル名でGemini APIを呼び出す。失敗した場合は None を返す。"""
-    if not GEMINI_API_KEY:
+    target_key = custom_api_key or GEMINI_API_KEY
+    if not target_key:
         return None
     try:
+        if custom_api_key:
+            genai.configure(api_key=custom_api_key)
         logger.info(f"Attempting Gemini analysis with model: {model_name}")
         
         # schema が Pydantic モデルの場合、JSON Schema に変換して "default" や "anyOf" キーを調整する
@@ -297,15 +301,15 @@ async def analyze_text(request: AnalyzeRequest):
 """
 
     # 1. ユーザー指定モデルでの解析を試行
-    parsed_data = try_gemini_analysis(request.text, request.model_name, system_instruction, CareRecordSchema)
+    parsed_data = try_gemini_analysis(request.text, request.model_name, system_instruction, CareRecordSchema, custom_api_key=request.api_key)
     
     # 2. 失敗した場合、公式の標準モデルでフォールバック試行
     if parsed_data is None and request.model_name != "gemini-3.5-flash":
         logger.info("Retrying analysis with fallback model: gemini-3.5-flash")
-        parsed_data = try_gemini_analysis(request.text, "gemini-3.5-flash", system_instruction, CareRecordSchema)
+        parsed_data = try_gemini_analysis(request.text, "gemini-3.5-flash", system_instruction, CareRecordSchema, custom_api_key=request.api_key)
     if parsed_data is None and request.model_name != "gemini-3.1-pro":
         logger.info("Retrying analysis with fallback model: gemini-3.1-pro")
-        parsed_data = try_gemini_analysis(request.text, "gemini-3.1-pro", system_instruction, CareRecordSchema)
+        parsed_data = try_gemini_analysis(request.text, "gemini-3.1-pro", system_instruction, CareRecordSchema, custom_api_key=request.api_key)
         
     # 3. それでもダメな場合、またはAPIキーがない場合はルールベースの簡易解析でフォールバック
     if parsed_data is None:
@@ -556,6 +560,57 @@ async def get_user_master():
     except Exception as e:
         logger.error(f"Failed to fetch user master from kintone: {str(e)}. Returning Dummy User Master.")
         return DUMMY_USERS
+
+@app.get("/api/get-record")
+async def get_record(user_name: str, record_date: Optional[str] = None):
+    """指定された利用者・日付のすでに登録されている kintone レコードを取得する。"""
+    domain = os.getenv("KINTONE_DOMAIN")
+    if domain:
+        domain = domain.replace("https://", "").replace("http://", "").strip("/")
+    app_id = os.getenv("KINTONE_APP_ID", "51")
+    api_token = os.getenv("KINTONE_API_TOKEN")
+    
+    if not record_date:
+        record_date = datetime.date.today().strftime("%Y-%m-%d")
+        
+    if not domain or not api_token:
+        # モック環境の場合
+        return {"status": "success", "found": False, "message": "kintone接続設定がありません。"}
+        
+    url_records = f"https://{domain}/k/v1/records.json"
+    headers = get_kintone_headers(api_token, has_body=False)
+    
+    query = f'record_date = "{record_date}" and user_name = "{user_name}" limit 1'
+    params = {"app": app_id, "query": query}
+    
+    try:
+        response = requests.get(url_records, headers=headers, params=params)
+        response.raise_for_status()
+        records = response.json().get("records", [])
+        
+        if records:
+            rec = records[0]
+            # kintone レコードをフラット辞書に変換
+            data = {}
+            for key, obj in rec.items():
+                if isinstance(obj, dict) and "value" in obj:
+                    data[key] = obj["value"]
+                else:
+                    data[key] = obj
+            return {
+                "status": "success",
+                "found": True,
+                "record": data
+            }
+        else:
+            return {
+                "status": "success",
+                "found": False,
+                "message": "本日の登録データはありません。"
+            }
+    except Exception as e:
+        logger.error(f"Failed to fetch record from kintone: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"kintone取得エラー: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
