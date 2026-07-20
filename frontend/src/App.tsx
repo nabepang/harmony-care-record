@@ -267,60 +267,54 @@ function App() {
           </div>
         </div>
 
-        {/* 設定ボタン */}
-        <button
-          onClick={() => setIsGearOpen(true)}
-          className="p-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-100 border border-transparent hover:border-slate-700 transition-all duration-200"
-        >
-          <Settings size={20} />
-        </button>
+        {/* APIキー ステータス & 設定ボタン */}
+        <div className="flex items-center gap-3">
+          {hasApiKey ? (
+            <div
+              onClick={() => setIsGearOpen(true)}
+              className="cursor-pointer inline-flex items-center gap-2 bg-slate-900/80 border border-green-500/30 text-green-300 px-3.5 py-1.5 rounded-full text-xs hover:bg-slate-800 transition-all shadow-sm"
+              title="クリックして設定を開く"
+            >
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+              <span className="font-medium text-slate-300">
+                Gemini API キー: <span className="text-green-400 font-semibold">登録済み</span>
+              </span>
+            </div>
+          ) : (
+            <div
+              onClick={() => setIsGearOpen(true)}
+              className="cursor-pointer inline-flex items-center gap-2 bg-amber-950/60 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-full text-xs hover:bg-amber-900/80 transition-all shadow-sm animate-pulse"
+              title="クリックして設定を開く"
+            >
+              <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+              <span className="font-medium text-amber-200">
+                Gemini API キー: <span className="text-amber-400 font-bold">未登録</span>
+              </span>
+            </div>
+          )}
+
+          {/* 設定ボタン */}
+          <button
+            onClick={() => setIsGearOpen(true)}
+            className="p-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-100 border border-transparent hover:border-slate-700 transition-all duration-200"
+            title="設定"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
       </header>
 
       {/* メインコンテンツ */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 md:py-12">
         {phase === "input" ? (
           <div className="flex flex-col gap-8 max-w-3xl mx-auto">
-            <div className="text-center flex flex-col items-center">
+            <div className="text-center">
               <h2 className="text-3xl font-extrabold text-slate-100 tracking-tight">
                 音声でかんたん介護記録
               </h2>
               <p className="mt-2 text-slate-400 text-sm md:text-base">
                 マイクボタンを押して話すだけで、AIが項目ごとに自動でデータを抽出します。
               </p>
-
-              {/* Gemini API キー ステータス表示 */}
-              <div className="mt-4 w-full flex justify-center">
-                {hasApiKey ? (
-                  <div
-                    onClick={() => setIsGearOpen(true)}
-                    className="cursor-pointer inline-flex items-center gap-2 bg-slate-900/80 border border-green-500/30 text-green-300 px-3.5 py-1.5 rounded-full text-xs hover:bg-slate-800 transition-all shadow-sm group"
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
-                    <span className="font-semibold text-slate-200">
-                      Gemini API キー: <span className="text-green-400">登録済み (AI利用可能)</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">⚙️設定</span>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => setIsGearOpen(true)}
-                    className="cursor-pointer bg-amber-950/50 border border-amber-500/50 text-amber-300 p-4 rounded-2xl flex items-center justify-between text-xs transition-all hover:bg-amber-900/60 shadow-lg max-w-xl text-left gap-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <AlertTriangle size={22} className="text-amber-400 shrink-0" />
-                      <div>
-                        <span className="font-bold text-amber-200 block text-sm mb-0.5">⚠️ Gemini API キーが未登録です</span>
-                        <span className="text-slate-300">
-                          AI解析機能を使用するには API キーが必要です。ここをタップして設定から登録してください。
-                        </span>
-                      </div>
-                    </div>
-                    <span className="bg-amber-500/20 px-3 py-1.5 rounded-xl text-xs font-bold border border-amber-500/40 shrink-0 text-amber-200 hover:bg-amber-500/30">
-                      設定を開く ➔
-                    </span>
-                  </div>
-                )}
-              </div>
             </div>
             
             <VoiceInput
