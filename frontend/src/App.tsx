@@ -55,6 +55,10 @@ function App() {
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [conflicts, setConflicts] = useState<Record<string, { name: string; existing: any; new: any }>>({});
   
+  // APIキー登録状態
+  const [hasServerApiKey, setHasServerApiKey] = useState(false);
+  const [hasCustomApiKey, setHasCustomApiKey] = useState(false);
+  
   // 通知ステート
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "info";
@@ -76,7 +80,24 @@ function App() {
     }
 
     fetchUserMaster();
+    checkApiKeyStatus();
   }, []);
+
+  const checkApiKeyStatus = async () => {
+    const customKey = localStorage.getItem("care_record_gemini_api_key");
+    setHasCustomApiKey(!!customKey && customKey.trim().length > 0);
+
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/config-status`);
+      if (res.data.status === "success") {
+        setHasServerApiKey(!!res.data.has_gemini_key);
+      }
+    } catch (e) {
+      console.error("Failed to fetch config status", e);
+    }
+  };
+
+  const hasApiKey = hasServerApiKey || hasCustomApiKey;
 
   const showNotification = (type: "success" | "error" | "info", message: string) => {
     setNotification({ type, message });
@@ -259,13 +280,47 @@ function App() {
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 md:py-12">
         {phase === "input" ? (
           <div className="flex flex-col gap-8 max-w-3xl mx-auto">
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center">
               <h2 className="text-3xl font-extrabold text-slate-100 tracking-tight">
                 音声でかんたん介護記録
               </h2>
               <p className="mt-2 text-slate-400 text-sm md:text-base">
                 マイクボタンを押して話すだけで、AIが項目ごとに自動でデータを抽出します。
               </p>
+
+              {/* Gemini API キー ステータス表示 */}
+              <div className="mt-4 w-full flex justify-center">
+                {hasApiKey ? (
+                  <div
+                    onClick={() => setIsGearOpen(true)}
+                    className="cursor-pointer inline-flex items-center gap-2 bg-slate-900/80 border border-green-500/30 text-green-300 px-3.5 py-1.5 rounded-full text-xs hover:bg-slate-800 transition-all shadow-sm group"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+                    <span className="font-semibold text-slate-200">
+                      Gemini API キー: <span className="text-green-400">登録済み (AI利用可能)</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">⚙️設定</span>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => setIsGearOpen(true)}
+                    className="cursor-pointer bg-amber-950/50 border border-amber-500/50 text-amber-300 p-4 rounded-2xl flex items-center justify-between text-xs transition-all hover:bg-amber-900/60 shadow-lg max-w-xl text-left gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle size={22} className="text-amber-400 shrink-0" />
+                      <div>
+                        <span className="font-bold text-amber-200 block text-sm mb-0.5">⚠️ Gemini API キーが未登録です</span>
+                        <span className="text-slate-300">
+                          AI解析機能を使用するには API キーが必要です。ここをタップして設定から登録してください。
+                        </span>
+                      </div>
+                    </div>
+                    <span className="bg-amber-500/20 px-3 py-1.5 rounded-xl text-xs font-bold border border-amber-500/40 shrink-0 text-amber-200 hover:bg-amber-500/30">
+                      設定を開く ➔
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             
             <VoiceInput
@@ -301,7 +356,10 @@ function App() {
       {/* 設定モーダル */}
       <GearModal
         isOpen={isGearOpen}
-        onClose={() => setIsGearOpen(false)}
+        onClose={() => {
+          setIsGearOpen(false);
+          checkApiKeyStatus();
+        }}
         selectedModel={selectedModel}
         onSelectModel={handleSelectModel}
       />

@@ -612,5 +612,17 @@ async def get_record(user_name: str, record_date: Optional[str] = None):
         logger.error(f"Failed to fetch record from kintone: {str(e)}")
         raise HTTPException(status_code=500, detail=f"kintone取得エラー: {str(e)}")
 
+@app.get("/api/config-status")
+async def get_config_status():
+    """現在の環境変数などの設定状況を返す"""
+    has_gemini_key = bool(GEMINI_API_KEY)
+    has_kintone_domain = bool(os.getenv("KINTONE_DOMAIN"))
+    has_kintone_token = bool(os.getenv("KINTONE_API_TOKEN"))
+    return {
+        "status": "success",
+        "has_gemini_key": has_gemini_key,
+        "has_kintone": has_kintone_domain and has_kintone_token
+    }
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
