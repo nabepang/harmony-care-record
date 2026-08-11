@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, AlertCircle } from "lucide-react";
+import { Mic, MicOff, AlertCircle, User } from "lucide-react";
 
 // Web Speech API の型定義を補う
 interface SpeechRecognitionErrorEvent extends Event {
@@ -30,11 +30,19 @@ interface SpeechRecognitionAlternative {
   confidence: number;
 }
 
+interface UserMasterEntry {
+  full_name: string;
+  aliases: string[];
+}
+
 interface VoiceInputProps {
   text: string;
   onChangeText: (text: string) => void;
   onAnalyze: () => void;
   isAnalyzing: boolean;
+  selectedUser: string;
+  onSelectUser: (userName: string) => void;
+  userMaster: UserMasterEntry[];
 }
 
 export const VoiceInput: React.FC<VoiceInputProps> = ({
@@ -42,6 +50,9 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   onChangeText,
   onAnalyze,
   isAnalyzing,
+  selectedUser,
+  onSelectUser,
+  userMaster,
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -130,6 +141,43 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
           <span>{errorMsg}</span>
         </div>
       )}
+
+      {/* 対象利用者選択エリア */}
+      <div className="w-full bg-slate-900/80 border border-indigo-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-400 border border-indigo-500/20">
+            <User size={22} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400">記録対象の利用者</span>
+              {selectedUser && (
+                <span className="bg-indigo-950 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded text-[11px] font-semibold">
+                  本日キープ中
+                </span>
+              )}
+            </div>
+            <p className="text-base font-bold text-slate-100 mt-0.5">
+              {selectedUser ? `${selectedUser} さんの記録` : "利用者を選択してください"}
+            </p>
+          </div>
+        </div>
+
+        <div className="w-full sm:w-64">
+          <select
+            value={selectedUser}
+            onChange={(e) => onSelectUser(e.target.value)}
+            className="w-full premium-input px-3.5 py-2.5 rounded-xl text-sm font-semibold border-indigo-500/30 focus:border-indigo-400"
+          >
+            <option value="">-- 利用者を選択してください --</option>
+            {userMaster.map((u) => (
+              <option key={u.full_name} value={u.full_name}>
+                {u.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* テキスト入力エリア */}
       <div className="w-full relative glass-panel p-1.5 glow-border">

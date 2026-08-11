@@ -55,6 +55,10 @@ function App() {
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [conflicts, setConflicts] = useState<Record<string, { name: string; existing: any; new: any }>>({});
   
+  // 対象利用者のキープ機能＆kintone閲覧用更新トリガー
+  const [currentSelectedUser, setCurrentSelectedUser] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   // APIキー登録状態
   const [hasServerApiKey, setHasServerApiKey] = useState(false);
   const [hasCustomApiKey, setHasCustomApiKey] = useState(false);
@@ -65,7 +69,7 @@ function App() {
     message: string;
   } | null>(null);
 
-  // 初期読み込み: AIモデルと利用者マスタのキャッシュロード
+  // 初期読み込み: AIモデルと利用者マスタのキャッシュロード、キープ利用者の復元
   useEffect(() => {
     // 1. モデルの復元
     const savedModel = localStorage.getItem("care_record_selected_model");
@@ -79,9 +83,20 @@ function App() {
       setUserMaster(JSON.parse(cachedMaster));
     }
 
+    // 3. キープされた対象利用者の復元
+    const savedUser = localStorage.getItem("care_record_current_user");
+    if (savedUser) {
+      setCurrentSelectedUser(savedUser);
+    }
+
     fetchUserMaster();
     checkApiKeyStatus();
   }, []);
+
+  const handleSelectCurrentSelectedUser = (userName: string) => {
+    setCurrentSelectedUser(userName);
+    localStorage.setItem("care_record_current_user", userName);
+  };
 
   const checkApiKeyStatus = async () => {
     let customKey = localStorage.getItem("care_record_gemini_api_key");
@@ -171,6 +186,15 @@ function App() {
         }
       });
 
+      // 利用者名の優先・自動適用ロジック
+      if (analyzedData.user_name) {
+        // 音声・テキストから名前が認識された場合はそちらを優先し、現在キープ中の選択も更新
+        handleSelectCurrentSelectedUser(analyzedData.user_name);
+      } else if (currentSelectedUser) {
+        // 音声等に名前が指定されていなかった場合は、現在選択（キープ）中の利用者を補完セット
+        mergedData.user_name = currentSelectedUser;
+      }
+
       setFormData(mergedData);
       setPhase("form");
       showNotification("success", "解析が完了しました。内容をご確認ください。");
@@ -226,6 +250,9 @@ function App() {
         setPhase("input");
         setConflictModalOpen(false);
         setConflicts({});
+
+        // kintoneへの登録・更新が成功したら「本日の kintone 登録状況を確認」表示を最新に更新
+        setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
       console.error("kintone保存に失敗しました", error);
@@ -328,12 +355,18 @@ function App() {
               onChangeText={setInputText}
               onAnalyze={handleAnalyzeText}
               isAnalyzing={isAnalyzing}
+              selectedUser={currentSelectedUser}
+              onSelectUser={handleSelectCurrentSelectedUser}
+              userMaster={userMaster}
             />
 
             {/* 本日の kintone 登録データ閲覧ビューアー */}
             <TodayRecordViewer
               userMaster={userMaster}
               apiBaseUrl={API_BASE_URL}
+              selectedUser={currentSelectedUser}
+              onSelectUser={handleSelectCurrentSelectedUser}
+              refreshTrigger={refreshTrigger}
             />
           </div>
         ) : (

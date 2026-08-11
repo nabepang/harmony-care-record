@@ -10,15 +10,22 @@ interface UserMasterEntry {
 interface TodayRecordViewerProps {
   userMaster: UserMasterEntry[];
   apiBaseUrl: string;
+  selectedUser: string;
+  onSelectUser: (userName: string) => void;
+  refreshTrigger?: number;
 }
 
-export const TodayRecordViewer: React.FC<TodayRecordViewerProps> = ({ userMaster, apiBaseUrl }) => {
-  const [selectedUser, setSelectedUser] = useState("");
+export const TodayRecordViewer: React.FC<TodayRecordViewerProps> = ({
+  userMaster,
+  apiBaseUrl,
+  selectedUser,
+  onSelectUser,
+  refreshTrigger = 0,
+}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [recordData, setRecordData] = useState<any>(null);
 
-  const handleSelectUser = async (userName: string) => {
-    setSelectedUser(userName);
+  const fetchRecordData = async (userName: string) => {
     if (!userName) {
       setRecordData(null);
       return;
@@ -43,6 +50,15 @@ export const TodayRecordViewer: React.FC<TodayRecordViewerProps> = ({ userMaster
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // selectedUser または refreshTrigger が変更されたときに自動読み込み
+  React.useEffect(() => {
+    fetchRecordData(selectedUser);
+  }, [selectedUser, refreshTrigger]);
+
+  const handleSelectUser = (userName: string) => {
+    onSelectUser(userName);
   };
 
   return (
