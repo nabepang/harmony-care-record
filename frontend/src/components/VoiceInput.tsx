@@ -57,6 +57,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef<string>("");
 
   useEffect(() => {
     const SpeechRecognition =
@@ -71,8 +72,6 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
     rec.continuous = true;
     rec.interimResults = true;
     rec.lang = "ja-JP";
-
-    let finalTranscript = "";
 
     rec.onstart = () => {
       setIsListening(true);
@@ -97,18 +96,24 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       let interimTranscript = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          finalTranscriptRef.current += event.results[i][0].transcript;
         } else {
           interimTranscript += event.results[i][0].transcript;
         }
       }
       
-      const currentText = finalTranscript + interimTranscript;
+      const currentText = finalTranscriptRef.current + interimTranscript;
       onChangeText(currentText);
     };
 
     recognitionRef.current = rec;
   }, [onChangeText]);
+
+  // テキストクリア関数（ボタン等から呼び出し）
+  const handleClearText = () => {
+    finalTranscriptRef.current = "";
+    onChangeText("");
+  };
 
   const toggleListening = () => {
     if (!recognitionRef.current) return;
@@ -116,10 +121,14 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
     if (isListening) {
       recognitionRef.current.stop();
     } else {
-      // 録音開始時にこれまでのテキストをクリアするか、あるいは追記にするか。
-      // 使い勝手を考慮して、新規録音開始時はクリアしてスタートする
+      // 新規録音開始時は認識バッファと表示テキストを完全クリア
+      finalTranscriptRef.current = "";
       onChangeText("");
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error("Speech recognition start failed", err);
+      }
     }
   };
 
@@ -183,14 +192,17 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       <div className="w-full relative glass-panel p-1.5 glow-border">
         <textarea
           value={text}
-          onChange={(e) => onChangeText(e.target.value)}
+          onChange={(e) => {
+            finalTranscriptRef.current = e.target.value;
+            onChangeText(e.target.value);
+          }}
           placeholder="ここをタップして直接キーボード入力するか、下のマイクボタンを押して声で入力してください..."
           className="w-full h-64 bg-transparent border-0 resize-none text-slate-100 placeholder-slate-500 focus:ring-0 focus:outline-none p-4 text-lg leading-relaxed"
           disabled={isAnalyzing}
         />
         {text && (
           <button
-            onClick={() => onChangeText("")}
+            onClick={handleClearText}
             className="absolute top-4 right-4 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2.5 py-1 rounded transition-colors"
           >
             クリア
