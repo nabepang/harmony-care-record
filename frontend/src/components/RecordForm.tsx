@@ -54,19 +54,14 @@ export const RecordForm: React.FC<RecordFormProps> = ({
     baseClass: string = "w-full premium-input px-3.5 py-2.5 rounded-xl text-sm"
   ) => {
     if (isExtracted(field)) {
-      return `${baseClass} border-indigo-400 ring-2 ring-indigo-400/40 bg-indigo-950/30 font-semibold transition-all`;
+      return `${baseClass} !bg-indigo-950/60 !border-indigo-400 ring-2 ring-indigo-400/40 text-indigo-100 font-semibold shadow-[0_0_15px_rgba(99,102,241,0.25)] transition-all`;
     }
     return baseClass;
   };
 
-  const renderLabel = (label: string, field: keyof CareRecordData) => (
-    <label className="block text-xs font-semibold text-slate-400 mb-1.5 flex items-center justify-between">
-      <span>{label}</span>
-      {isExtracted(field) && (
-        <span className="text-[10px] font-bold text-indigo-300 bg-indigo-950/90 border border-indigo-400/50 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm animate-fade-in">
-          ✨ 今回の解析項目
-        </span>
-      )}
+  const renderLabel = (label: string, _field: keyof CareRecordData) => (
+    <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+      {label}
     </label>
   );
 
@@ -160,7 +155,7 @@ export const RecordForm: React.FC<RecordFormProps> = ({
                 type="button"
                 onClick={() => handleSelectToggle("transport_pickup", formData.transport_pickup, ["", "〇", "×"])}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                  isExtracted("transport_pickup") ? "ring-2 ring-indigo-400/40 font-bold " : ""
+                  isExtracted("transport_pickup") ? "ring-2 ring-indigo-400/60 !border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.25)] " : ""
                 }${
                   formData.transport_pickup === "〇"
                     ? "bg-green-950/40 border-green-500/50 text-green-300"
@@ -178,7 +173,7 @@ export const RecordForm: React.FC<RecordFormProps> = ({
                 type="button"
                 onClick={() => handleSelectToggle("transport_dropoff", formData.transport_dropoff, ["", "〇", "×"])}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                  isExtracted("transport_dropoff") ? "ring-2 ring-indigo-400/40 font-bold " : ""
+                  isExtracted("transport_dropoff") ? "ring-2 ring-indigo-400/60 !border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.25)] " : ""
                 }${
                   formData.transport_dropoff === "〇"
                     ? "bg-green-950/40 border-green-500/50 text-green-300"
@@ -380,7 +375,7 @@ export const RecordForm: React.FC<RecordFormProps> = ({
                 type="button"
                 onClick={() => handleSelectToggle("rehab_status", formData.rehab_status, ["", "〇"])}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                  isExtracted("rehab_status") ? "ring-2 ring-indigo-400/40 font-bold " : ""
+                  isExtracted("rehab_status") ? "ring-2 ring-indigo-400/60 !border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.25)] " : ""
                 }${
                   formData.rehab_status === "〇"
                     ? "bg-indigo-950/40 border-indigo-500/50 text-indigo-300"
@@ -396,7 +391,7 @@ export const RecordForm: React.FC<RecordFormProps> = ({
                 type="button"
                 onClick={() => handleSelectToggle("bath_status", formData.bath_status, ["", "〇"])}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                  isExtracted("bath_status") ? "ring-2 ring-indigo-400/40 font-bold " : ""
+                  isExtracted("bath_status") ? "ring-2 ring-indigo-400/60 !border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.25)] " : ""
                 }${
                   formData.bath_status === "〇"
                     ? "bg-indigo-950/40 border-indigo-500/50 text-indigo-300"
