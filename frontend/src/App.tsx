@@ -204,10 +204,13 @@ function App() {
         delete (analyzedData as any).bp;
       }
 
-      // ★利用者名のマスタ整合性判定＆キープ保持ロジック
+      // ★利用者名（user_name）の完全一致・決定ロジック
       let finalUserName = "";
-      if (analyzedData.user_name) {
-        // AIが抽出した名前が利用者マスタ内の正式氏名またはエイリアスに合致するか確認
+      if (currentSelectedUser) {
+        // 1. 入力画面で利用者が選択・キープされている場合は、その選択した利用者名を100%最優先適用
+        finalUserName = currentSelectedUser;
+      } else if (analyzedData.user_name) {
+        // 2. 入力画面で未選択の場合のみ、AIが音声から抽出した名前を採用
         const matchedUser = userMaster.find(
           (u) => u.full_name === analyzedData.user_name || u.aliases.includes(analyzedData.user_name || "")
         );
@@ -217,11 +220,6 @@ function App() {
         } else if (analyzedData.user_name !== "不明" && !analyzedData.user_name.includes("不明")) {
           finalUserName = analyzedData.user_name;
         }
-      }
-
-      // 音声テキストに有効な名前がない場合、現在選択（キープ）されている利用者名を適用！
-      if (!finalUserName && currentSelectedUser) {
-        finalUserName = currentSelectedUser;
       }
       mergedData.user_name = finalUserName;
 
@@ -315,6 +313,9 @@ function App() {
       ...prev,
       [field]: value,
     }));
+    if (field === "user_name" && typeof value === "string") {
+      handleSelectCurrentSelectedUser(value);
+    }
   };
 
   return (
