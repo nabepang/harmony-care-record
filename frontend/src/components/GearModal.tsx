@@ -22,18 +22,22 @@ export const GearModal: React.FC<GearModalProps> = ({
   const [apiKey, setApiKey] = useState("");
   const [savedSuccessMsg, setSavedSuccessMsg] = useState(false);
 
+  // デフォルト3モデルの定義
+  const DEFAULT_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro"];
+
   // ローカルストレージからモデルリストおよびAPIキーを読み込む
   useEffect(() => {
-    const defaultModels = ["gemini-3.5-flash", "gemini-3.1-pro", "gemini-3.1-flash-lite"];
     const savedModels = localStorage.getItem("care_record_ai_models");
     if (savedModels) {
       const parsed: string[] = JSON.parse(savedModels);
-      const merged = Array.from(new Set([...defaultModels, ...parsed]));
+      // 古い gemini-3.5-flash などを除外し、新しいデフォルトモデルが含まれるようにマージ
+      const filtered = parsed.filter((m) => m !== "gemini-3.5-flash");
+      const merged = Array.from(new Set([...DEFAULT_MODELS, ...filtered]));
       setModels(merged);
       localStorage.setItem("care_record_ai_models", JSON.stringify(merged));
     } else {
-      setModels(defaultModels);
-      localStorage.setItem("care_record_ai_models", JSON.stringify(defaultModels));
+      setModels(DEFAULT_MODELS);
+      localStorage.setItem("care_record_ai_models", JSON.stringify(DEFAULT_MODELS));
     }
 
     const savedKey = localStorage.getItem("care_record_gemini_api_key");
@@ -84,11 +88,7 @@ export const GearModal: React.FC<GearModalProps> = ({
 
   const handleDeleteModel = (modelToDelete: string) => {
     // デフォルトのモデルは削除できないようにする
-    if (
-      modelToDelete === "gemini-3.5-flash" ||
-      modelToDelete === "gemini-3.1-pro" ||
-      modelToDelete === "gemini-3.1-flash-lite"
-    ) {
+    if (DEFAULT_MODELS.includes(modelToDelete)) {
       alert("初期モデルは削除できません。");
       return;
     }
@@ -96,7 +96,20 @@ export const GearModal: React.FC<GearModalProps> = ({
     setModels(updated);
     localStorage.setItem("care_record_ai_models", JSON.stringify(updated));
     if (selectedModel === modelToDelete) {
-      onSelectModel("gemini-3.5-flash");
+      onSelectModel("gemini-3.6-flash");
+    }
+  };
+
+  const getModelDisplayName = (modelId: string) => {
+    switch (modelId) {
+      case "gemini-3.6-flash":
+        return "3.6 Flash - あらゆる場面でサポート (デフォルト)";
+      case "gemini-3.5-flash-lite":
+        return "3.5 Flash-Lite - すばやく回答を得るのに最適";
+      case "gemini-3.1-pro":
+        return "3.1 Pro - 高度な数学とコーディングに最適";
+      default:
+        return modelId;
     }
   };
 
@@ -162,11 +175,11 @@ export const GearModal: React.FC<GearModalProps> = ({
           <select
             value={selectedModel}
             onChange={(e) => onSelectModel(e.target.value)}
-            className="w-full premium-input px-3 py-2.5 rounded-lg border border-slate-700 focus:outline-none"
+            className="w-full premium-input px-3 py-2.5 rounded-lg border border-slate-700 focus:outline-none text-sm font-semibold"
           >
             {models.map((model) => (
-              <option key={model} value={model} className="bg-slate-900 text-slate-100">
-                {model}
+              <option key={model} value={model} className="bg-slate-900 text-slate-100 py-1">
+                {getModelDisplayName(model)}
               </option>
             ))}
           </select>
@@ -199,10 +212,10 @@ export const GearModal: React.FC<GearModalProps> = ({
             {models.map((model) => (
               <div
                 key={model}
-                className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-slate-850/50 transition-colors"
+                className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-slate-850/50 transition-colors text-xs"
               >
-                <span className="text-sm text-slate-300">{model}</span>
-                {model !== "gemini-3.5-flash" && model !== "gemini-3.1-pro" && (
+                <span className="text-slate-300 font-medium">{getModelDisplayName(model)}</span>
+                {!DEFAULT_MODELS.includes(model) && (
                   <button
                     onClick={() => handleDeleteModel(model)}
                     className="text-slate-500 hover:text-red-400 p-1 rounded transition-colors"

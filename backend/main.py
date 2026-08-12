@@ -323,9 +323,9 @@ async def analyze_text(request: AnalyzeRequest):
     parsed_data = try_gemini_analysis(request.text, request.model_name, system_instruction, CareRecordSchema, custom_api_key=request.api_key)
     
     # 2. 失敗した場合、公式の標準モデルでフォールバック試行
-    if parsed_data is None and request.model_name != "gemini-3.5-flash":
-        logger.info("Retrying analysis with fallback model: gemini-3.5-flash")
-        parsed_data = try_gemini_analysis(request.text, "gemini-3.5-flash", system_instruction, CareRecordSchema, custom_api_key=request.api_key)
+    if parsed_data is None and request.model_name != "gemini-3.6-flash":
+        logger.info("Retrying analysis with fallback model: gemini-3.6-flash")
+        parsed_data = try_gemini_analysis(request.text, "gemini-3.6-flash", system_instruction, CareRecordSchema, custom_api_key=request.api_key)
     if parsed_data is None and request.model_name != "gemini-3.1-pro":
         logger.info("Retrying analysis with fallback model: gemini-3.1-pro")
         parsed_data = try_gemini_analysis(request.text, "gemini-3.1-pro", system_instruction, CareRecordSchema, custom_api_key=request.api_key)

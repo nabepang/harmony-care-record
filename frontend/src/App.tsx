@@ -74,10 +74,13 @@ function App() {
 
   // 初期読み込み: AIモデルと利用者マスタのキャッシュロード、キープ利用者の復元
   useEffect(() => {
-    // 1. モデルの復元
+    // 1. モデルの復元（旧 gemini-3.5-flash はデフォルト 3.6-flash に移行）
     const savedModel = localStorage.getItem("care_record_selected_model");
-    if (savedModel) {
+    if (savedModel && savedModel !== "gemini-3.5-flash") {
       setSelectedModel(savedModel);
+    } else {
+      setSelectedModel("gemini-3.6-flash");
+      localStorage.setItem("care_record_selected_model", "gemini-3.6-flash");
     }
 
     // 2. 利用者マスタの復元とフェッチ
