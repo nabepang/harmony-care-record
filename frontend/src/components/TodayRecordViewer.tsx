@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Calendar, Clock, HeartPulse, Utensils, CheckCircle2, AlertCircle } from "lucide-react";
+import { Calendar, Clock, HeartPulse, Utensils, CheckCircle2, AlertCircle, AlertTriangle, Droplets } from "lucide-react";
 
 interface UserMasterEntry {
   full_name: string;
@@ -52,8 +52,7 @@ export const TodayRecordViewer: React.FC<TodayRecordViewerProps> = ({
     }
   };
 
-  // selectedUser または refreshTrigger が変更されたときに自動読み込み
-  React.useEffect(() => {
+  useEffect(() => {
     fetchRecordData(selectedUser);
   }, [selectedUser, refreshTrigger]);
 
@@ -61,24 +60,55 @@ export const TodayRecordViewer: React.FC<TodayRecordViewerProps> = ({
     onSelectUser(userName);
   };
 
+  // 値の入力状態に応じた見やすい大文字バッジレンダラー
+  const renderItemBadge = (
+    value: any,
+    unit: string = "",
+    formatFn?: (val: any) => string
+  ) => {
+    const isPresent =
+      value !== null &&
+      value !== undefined &&
+      value !== "" &&
+      value !== false;
+
+    if (!isPresent) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-rose-300 bg-rose-950/40 border border-rose-500/40 shadow-sm">
+          <AlertTriangle size={13} className="text-rose-400" />
+          未入力
+        </span>
+      );
+    }
+
+    const displayVal = formatFn ? formatFn(value) : `${value}${unit}`;
+
+    return (
+      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-base font-extrabold text-emerald-300 bg-emerald-950/40 border border-emerald-500/40 shadow-sm">
+        {displayVal}
+      </span>
+    );
+  };
+
   return (
-    <div className="w-full glass-panel p-6 glow-border mt-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-slate-800 pb-4">
+    <div className="w-full glass-panel p-6 glow-border mt-8">
+      {/* セクションヘッダー */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
         <div>
-          <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+          <h3 className="text-xl font-extrabold text-slate-100 flex items-center gap-2.5">
             🔍 本日の kintone 登録状況を確認
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            利用者名を選択すると、本日すでに kintone に登録されているデータを閲覧できます。
+          <p className="text-sm text-slate-400 mt-1">
+            対象者を選択すると、本日すでに kintone に登録されている全データ・未入力項目をリアルタイムで確認できます。
           </p>
         </div>
 
         {/* 利用者選択ドロップダウン */}
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-72">
           <select
             value={selectedUser}
             onChange={(e) => handleSelectUser(e.target.value)}
-            className="w-full premium-input px-3.5 py-2 rounded-xl text-sm"
+            className="w-full premium-input px-4 py-3 rounded-2xl text-base font-bold border-indigo-500/40 focus:border-indigo-400 shadow-md"
           >
             <option value="">-- 利用者を選択してください --</option>
             {userMaster.map((u) => (
@@ -92,92 +122,207 @@ export const TodayRecordViewer: React.FC<TodayRecordViewerProps> = ({
 
       {/* コンテンツエリア */}
       {isLoading ? (
-        <div className="py-6 text-center text-slate-400 text-sm flex items-center justify-center gap-2">
-          <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
-          kintone から最新データを読み込んでいます...
+        <div className="py-12 text-center text-slate-300 text-base font-semibold flex items-center justify-center gap-3">
+          <div className="w-6 h-6 border-3 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+          kintone から最新の登録データを読み込んでいます...
         </div>
       ) : !selectedUser ? (
-        <div className="py-4 text-center text-slate-500 text-xs">
-          上のリストから利用者名を選択してください。
+        <div className="py-8 text-center text-slate-400 text-sm font-semibold bg-slate-900/40 rounded-2xl border border-slate-800/60 p-6">
+          ☝️ 上のドロップダウンから利用者名を選択すると、本日の登録データ状況が表示されます。
         </div>
       ) : !recordData ? (
-        <div className="py-6 text-center text-slate-400 text-xs flex flex-col items-center gap-1.5">
-          <AlertCircle size={20} className="text-slate-500" />
-          <span>【{selectedUser}】さんの本日の登録データはまだありません。</span>
+        <div className="py-10 text-center text-slate-400 text-sm flex flex-col items-center gap-2 bg-slate-900/40 rounded-2xl border border-slate-800/60 p-6">
+          <AlertCircle size={28} className="text-amber-400" />
+          <span className="text-base font-bold text-slate-200">
+            【{selectedUser}】さんの本日の kintone 登録データはまだありません
+          </span>
+          <span className="text-xs text-slate-500">
+            上のマイクボタンを押して音声入力すると、自動でデータが抽出・登録されます。
+          </span>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 animate-fade-in">
+        <div className="flex flex-col gap-6 animate-fade-in">
           {/* ヘッダーバッジ */}
-          <div className="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-xs">
-            <span className="font-bold text-indigo-300 flex items-center gap-1.5">
-              <CheckCircle2 size={16} className="text-green-400" /> {recordData.user_name} さんの登録済みデータ
+          <div className="flex flex-wrap items-center justify-between bg-slate-900/90 p-4 rounded-2xl border border-indigo-500/30 shadow-md gap-3">
+            <span className="text-lg font-extrabold text-indigo-200 flex items-center gap-2">
+              <CheckCircle2 size={22} className="text-emerald-400" />
+              {recordData.user_name} さんの登録データ一覧
             </span>
-            <span className="text-slate-400 flex items-center gap-1 text-[11px]">
-              <Calendar size={13} /> {recordData.record_date}
+            <span className="text-slate-300 flex items-center gap-1.5 text-sm font-bold bg-slate-800/80 px-3.5 py-1.5 rounded-xl border border-slate-700">
+              <Calendar size={16} className="text-indigo-400" />
+              {recordData.record_date}
             </span>
           </div>
 
-          {/* グリッドカード表示 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* 基本・送迎・時間 */}
-            <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 flex flex-col gap-1.5">
-              <h4 className="text-xs font-bold text-indigo-400 flex items-center gap-1">
-                <Clock size={13} /> 時間・送迎・担当
+          {/* 表形式データグリッド Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* セクション 1: 時間・送迎・担当 */}
+            <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800/90 flex flex-col gap-3 shadow-lg">
+              <h4 className="text-base font-bold text-indigo-300 flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                <Clock size={18} /> 時間・送迎・担当
               </h4>
-              <div className="text-xs text-slate-300 flex flex-col gap-1 mt-0.5">
-                <div>登所: <span className="font-semibold text-slate-100">{recordData.entry_time || "--:--"}</span> / 退所: <span className="font-semibold text-slate-100">{recordData.exit_time || "--:--"}</span></div>
-                <div>迎え送迎: <span className="font-semibold text-slate-100">{recordData.transport_pickup || "未設定"}</span></div>
-                <div>送り送迎: <span className="font-semibold text-slate-100">{recordData.transport_dropoff || "未設定"}</span></div>
-                <div>担当者: <span className="font-semibold text-slate-100">{recordData.staff_in_charge || "未設定"}</span></div>
-              </div>
-            </div>
-
-            {/* バイタル */}
-            <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 flex flex-col gap-1.5">
-              <h4 className="text-xs font-bold text-rose-400 flex items-center gap-1">
-                <HeartPulse size={13} /> バイタル
-              </h4>
-              <div className="text-xs text-slate-300 flex flex-col gap-1 mt-0.5">
-                <div>体温 AM: <span className="font-semibold text-slate-100">{recordData.kt_am ? `${recordData.kt_am}℃` : "--"}</span> / PM: <span className="font-semibold text-slate-100">{recordData.kt_pm ? `${recordData.kt_pm}℃` : "--"}</span></div>
-                <div>心拍: <span className="font-semibold text-slate-100">{recordData.hr ? `${recordData.hr} bpm` : "--"}</span> / SpO2: <span className="font-semibold text-slate-100">{recordData.spo2 ? `${recordData.spo2}%` : "--"}</span></div>
-                <div>血圧: <span className="font-semibold text-slate-100">{recordData.bp || "--"}</span> / 呼吸数: <span className="font-semibold text-slate-100">{recordData.rr ? `${recordData.rr}回` : "--"}</span></div>
-              </div>
-            </div>
-
-            {/* 食事・水分・排泄 */}
-            <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 flex flex-col gap-1.5">
-              <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1">
-                <Utensils size={13} /> 食事・ケア・回数
-              </h4>
-              <div className="text-xs text-slate-300 flex flex-col gap-1 mt-0.5">
-                <div>主菜: <span className="font-semibold text-slate-100">{recordData.food_main !== "" && recordData.food_main !== null ? `${recordData.food_main}/10` : "--"}</span> / 副菜: <span className="font-semibold text-slate-100">{recordData.food_side !== "" && recordData.food_side !== null ? `${recordData.food_side}/10` : "--"}</span></div>
-                <div className="flex gap-1.5 my-0.5">
-                  <span className="px-2 py-0.5 bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 rounded text-[11px]">尿: {recordData.urine_count || 0}回</span>
-                  <span className="px-2 py-0.5 bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 rounded text-[11px]">便: {recordData.stool_count || 0}回</span>
-                  <span className="px-2 py-0.5 bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 rounded text-[11px]">吸引: {recordData.suction_count || 0}回</span>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">登所時刻</span>
+                  {renderItemBadge(recordData.entry_time)}
                 </div>
-                <div>リハビリ: <span className="font-semibold text-slate-100">{recordData.rehab_status || "未"}</span> / 入浴: <span className="font-semibold text-slate-100">{recordData.bath_status || "未"}</span></div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">退所時刻</span>
+                  {renderItemBadge(recordData.exit_time)}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">迎え送迎</span>
+                  {renderItemBadge(recordData.transport_pickup)}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">送り送迎</span>
+                  {renderItemBadge(recordData.transport_dropoff)}
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-sm font-semibold text-slate-400">担当スタッフ</span>
+                  {renderItemBadge(recordData.staff_in_charge)}
+                </div>
+              </div>
+            </div>
+
+            {/* セクション 2: バイタル */}
+            <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800/90 flex flex-col gap-3 shadow-lg">
+              <h4 className="text-base font-bold text-rose-300 flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                <HeartPulse size={18} /> バイタル記録
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">体温 AM</span>
+                  {renderItemBadge(recordData.kt_am, "℃")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">体温 PM</span>
+                  {renderItemBadge(recordData.kt_pm, "℃")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">心拍 (HR)</span>
+                  {renderItemBadge(recordData.hr, " bpm")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">SpO2</span>
+                  {renderItemBadge(recordData.spo2, "%")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">血圧 (BP)</span>
+                  {renderItemBadge(recordData.bp)}
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-sm font-semibold text-slate-400">呼吸数 (RR)</span>
+                  {renderItemBadge(recordData.rr, " 回/分")}
+                </div>
+              </div>
+            </div>
+
+            {/* セクション 3: 食事・排泄・ケア */}
+            <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800/90 flex flex-col gap-3 shadow-lg">
+              <h4 className="text-base font-bold text-amber-300 flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                <Utensils size={18} /> 食事・排泄・ケア
+              </h4>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">主菜摂取量</span>
+                  {renderItemBadge(recordData.food_main, "/10")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">副菜摂取量</span>
+                  {renderItemBadge(recordData.food_side, "/10")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">尿回数</span>
+                  {renderItemBadge(recordData.urine_count, " 回")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">便回数</span>
+                  {renderItemBadge(recordData.stool_count, " 回")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">吸引回数</span>
+                  {renderItemBadge(recordData.suction_count, " 回")}
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
+                  <span className="text-sm font-semibold text-slate-400">リハビリ</span>
+                  {renderItemBadge(recordData.rehab_status)}
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-sm font-semibold text-slate-400">入浴</span>
+                  {renderItemBadge(recordData.bath_status)}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* テキスト記述項目 */}
-          {(recordData.fluid_log || recordData.seizure_log || recordData.medication_status || recordData.remarks) && (
-            <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 flex flex-col gap-1.5 text-xs">
-              {recordData.fluid_log && (
-                <div><span className="font-bold text-slate-400">水分記録:</span> <span className="text-slate-200 whitespace-pre-wrap">{recordData.fluid_log}</span></div>
-              )}
-              {recordData.seizure_log && (
-                <div><span className="font-bold text-slate-400">発作記録:</span> <span className="text-slate-200 whitespace-pre-wrap">{recordData.seizure_log}</span></div>
-              )}
-              {recordData.medication_status && (
-                <div><span className="font-bold text-slate-400">投薬・処置:</span> <span className="text-slate-200 whitespace-pre-wrap">{recordData.medication_status}</span></div>
-              )}
-              {recordData.remarks && (
-                <div><span className="font-bold text-slate-400">備考:</span> <span className="text-slate-200 whitespace-pre-wrap">{recordData.remarks}</span></div>
-              )}
+          {/* セクション 4: テキスト自由記述項目（水分・看護・特記） */}
+          <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800/90 flex flex-col gap-4 shadow-lg">
+            <h4 className="text-base font-bold text-cyan-300 flex items-center gap-2 border-b border-slate-800 pb-2.5">
+              <Droplets size={18} /> 水分・看護・特記事項
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5 p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                  💧 水分記録
+                </span>
+                {recordData.fluid_log ? (
+                  <p className="text-sm font-semibold text-slate-100 whitespace-pre-wrap leading-relaxed">
+                    {recordData.fluid_log}
+                  </p>
+                ) : (
+                  <span className="text-xs font-bold text-rose-300 bg-rose-950/30 px-2.5 py-1 rounded-lg w-fit border border-rose-500/30">
+                    未入力
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5 p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                  ⚡ 発作記録
+                </span>
+                {recordData.seizure_log ? (
+                  <p className="text-sm font-semibold text-slate-100 whitespace-pre-wrap leading-relaxed">
+                    {recordData.seizure_log}
+                  </p>
+                ) : (
+                  <span className="text-xs font-bold text-rose-300 bg-rose-950/30 px-2.5 py-1 rounded-lg w-fit border border-rose-500/30">
+                    未入力
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5 p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                  💊 投薬・処置
+                </span>
+                {recordData.medication_status ? (
+                  <p className="text-sm font-semibold text-slate-100 whitespace-pre-wrap leading-relaxed">
+                    {recordData.medication_status}
+                  </p>
+                ) : (
+                  <span className="text-xs font-bold text-rose-300 bg-rose-950/30 px-2.5 py-1 rounded-lg w-fit border border-rose-500/30">
+                    未入力
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5 p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                  📝 備考
+                </span>
+                {recordData.remarks ? (
+                  <p className="text-sm font-semibold text-slate-100 whitespace-pre-wrap leading-relaxed">
+                    {recordData.remarks}
+                  </p>
+                ) : (
+                  <span className="text-xs font-bold text-rose-300 bg-rose-950/30 px-2.5 py-1 rounded-lg w-fit border border-rose-500/30">
+                    未入力
+                  </span>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
