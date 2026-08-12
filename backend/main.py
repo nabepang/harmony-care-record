@@ -63,7 +63,7 @@ class CareRecordSchema(BaseModel):
     kt_pm: Optional[float] = Field(None, description="体温(PM)。単位は℃。")
     hr: Optional[int] = Field(None, description="心拍(HR)。単位はbpm。")
     spo2: Optional[int] = Field(None, description="SpO2。単位は%。")
-    bp: Optional[str] = Field(None, description="血圧(BP)。テキストに血圧の具体的な言及がない場合は必ず null にしてください。言及がある場合のみ「120/80」などの形式で出力します。")
+    bp: Optional[str] = Field(None, description="血圧(BP)。入力テキスト内に血圧の具体的な数値の言及が一切ない場合は【必ず null】にしてください。言及がある場合のみ最高血圧/最低血圧の形式（例: 130/85）で出力します。")
     rr: Optional[int] = Field(None, description="呼吸数(RR)。単位は回/分。")
     food_main: Optional[int] = Field(None, description="主菜摂取量。0から10の10段階評価。")
     food_side: Optional[int] = Field(None, description="副菜摂取量。0から10の10段階評価。")
@@ -292,6 +292,7 @@ async def analyze_text(request: AnalyzeRequest):
 8. `rehab_status` (リハビリ実施): 実施の文脈（頑張った、実施した等）があれば「〇」を出力してください。それ以外は null。
 9. `bath_status` (入浴実施): 実施の文脈（お風呂に入った、入浴した等）があれば「〇」を出力してください。それ以外は null。
 10. `seizure_log` (発作記録) / `medication_status` (投薬処置) / `remarks` (備考): 福祉・看護の公的記録にふさわしい専門的な文章（常体：「〜である」「〜を行う」）として個別に文章を抽出してください。
+11. `bp` (血圧): テキスト内に具体的な血圧数値（「血圧 120の80」など）が含まれていない場合は【必ず null】を出力してください。推測やデフォルト値の出力は禁止です。
 
 【利用者マスタ情報】
 {user_master_str}

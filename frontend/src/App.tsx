@@ -59,6 +59,9 @@ function App() {
   const [currentSelectedUser, setCurrentSelectedUser] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // 今回のAI解析で抽出されたフィールド項目一覧
+  const [extractedFields, setExtractedFields] = useState<(keyof CareRecordData)[]>([]);
+
   // APIキー登録状態
   const [hasServerApiKey, setHasServerApiKey] = useState(false);
   const [hasCustomApiKey, setHasCustomApiKey] = useState(false);
@@ -160,12 +163,18 @@ function App() {
     try {
       const startTime = performance.now();
       const customApiKey = localStorage.getItem("care_record_gemini_api_key");
-      const res = await axios.post(`${API_BASE_URL}/api/analyze-text`, {
-        text: inputText,
-        model_name: selectedModel,
-        user_master: userMaster,
-        api_key: customApiKey || undefined,
-      });
+      
+      // 30秒タイムアウトを設定
+      const res = await axios.post(
+        `${API_BASE_URL}/api/analyze-text`,
+        {
+          text: inputText,
+          model_name: selectedModel,
+          user_master: userMaster,
+          api_key: customApiKey || undefined,
+        },
+        { timeout: 30000 }
+      );
       const endTime = performance.now();
       console.log(`AI解析時間: ${(endTime - startTime).toFixed(1)}ms`);
 
@@ -186,21 +195,59 @@ function App() {
         }
       });
 
-      // 利用者名の優先・自動適用ロジック
-      if (analyzedData.user_name) {
-        // 音声・テキストから名前が認識された場合はそちらを優先し、現在キープ中の選択も更新
-        handleSelectCurrentSelectedUser(analyzedData.user_name);
-      } else if (currentSelectedUser) {
-        // 音声等に名前が指定されていなかった場合は、現在選択（キープ）中の利用者を補完セット
-        mergedData.user_name = currentSelectedUser;
+      // ★血圧 BP の誤抽出防止ガード
+      // 元テキストに「血圧」「BP」「bp」または「数値/数値」のパターンが一切存在しない場合、誤抽出された 120/80 等を削除する
+      const lowerText = inputText.toLowerCase();
+      const hasBpMention = lowerText.includes("血圧") || lowerText.includes("bp") || /\d{2,3}\/\d{2,3}/.test(inputText);
+      if (!hasBpMention) {
+        mergedData.bp = "";
+        delete (analyzedData as any).bp;
       }
+
+      // ★利用者名のマスタ整合性判定＆キープ保持ロジック
+      let finalUserName = "";
+      if (analyzedData.user_name) {
+        // AIが抽出した名前が利用者マスタ内の正式氏名またはエイリアスに合致するか確認
+        const matchedUser = userMaster.find(
+          (u) => u.full_name === analyzedData.user_name || u.aliases.includes(analyzedData.user_name || "")
+        );
+        if (matchedUser) {
+          finalUserName = matchedUser.full_name;
+          handleSelectCurrentSelectedUser(matchedUser.full_name);
+        } else if (analyzedData.user_name !== "不明" && !analyzedData.user_name.includes("不明")) {
+          finalUserName = analyzedData.user_name;
+        }
+      }
+
+      // 音声テキストに有効な名前がない場合、現在選択（キープ）されている利用者名を適用！
+      if (!finalUserName && currentSelectedUser) {
+        finalUserName = currentSelectedUser;
+      }
+      mergedData.user_name = finalUserName;
+
+      // ★今回のAI解析で値が得られたフィールド一覧をハイライト用として保持
+      const extracted = Object.keys(analyzedData).filter((k) => {
+        const val = (analyzedData as any)[k];
+        return val !== undefined && val !== null && val !== "";
+      }) as (keyof CareRecordData)[];
+      setExtractedFields(extracted);
 
       setFormData(mergedData);
       setPhase("form");
       showNotification("success", "解析が完了しました。内容をご確認ください。");
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI解析に失敗しました", error);
-      showNotification("error", "AI解析に失敗しました。時間をおいて再度お試しください。");
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        showNotification(
+          "error",
+          "⏱️ AI解析処理が30秒以内に完了しませんでした（タイムアウト）。通信環境をご確認の上、もう一度【記録を解析する】をお試しください。"
+        );
+      } else {
+        showNotification(
+          "error",
+          `⚠️ AI解析に失敗しました: ${error.response?.data?.detail || error.message || "時間をおいて再度お試しください。"}`
+        );
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -377,6 +424,7 @@ function App() {
             onBack={() => setPhase("input")}
             isSaving={isSaving}
             userMaster={userMaster}
+            extractedFields={extractedFields}
           />
         )}
       </main>
