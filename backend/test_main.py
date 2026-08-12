@@ -142,3 +142,36 @@ def test_save_to_kintone_existing_record_merge(mock_put, mock_get):
     record = called_args["record"]
     assert record["fluid_log"]["value"] == "10:00 麦茶 100ml\n14:00 スポーツドリンク 150ml"
     assert record["remarks"]["value"] == "元気に過ごす。\n帰宅前少し眠そう。"
+
+@patch("main.try_gemini_analysis")
+def test_analyze_text_excretion_plus(mock_try_analysis):
+    """排泄ケアのプラス表現（尿プラス、便＋、両方プラス）の抽出テスト"""
+    mock_try_analysis.return_value = None  # フォールバックパーサーをテスト
+
+    # パターン1: 尿プラス
+    payload1 = {
+        "text": "大隅さん、尿プラスです。",
+        "model_name": "gemini-3.5-flash",
+        "user_master": [{"full_name": "大隅 太郎", "aliases": ["大隅"]}]
+    }
+    resp1 = client.post("/api/analyze-text", json=payload1)
+    assert resp1.json()["urine_count"] == 1
+
+    # パターン2: 便＋
+    payload2 = {
+        "text": "大隅さん、便＋でした。",
+        "model_name": "gemini-3.5-flash",
+        "user_master": [{"full_name": "大隅 太郎", "aliases": ["大隅"]}]
+    }
+    resp2 = client.post("/api/analyze-text", json=payload2)
+    assert resp2.json()["stool_count"] == 1
+
+    # パターン3: 尿と便、両方プラス
+    payload3 = {
+        "text": "大隅さん、尿と便、両方プラスです。",
+        "model_name": "gemini-3.5-flash",
+        "user_master": [{"full_name": "大隅 太郎", "aliases": ["大隅"]}]
+    }
+    resp3 = client.post("/api/analyze-text", json=payload3)
+    assert resp3.json()["urine_count"] == 1
+    assert resp3.json()["stool_count"] == 1

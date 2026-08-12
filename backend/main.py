@@ -68,8 +68,8 @@ class CareRecordSchema(BaseModel):
     food_main: Optional[int] = Field(None, description="主菜摂取量。0から10の10段階評価。")
     food_side: Optional[int] = Field(None, description="副菜摂取量。0から10の10段階評価。")
     fluid_log: Optional[str] = Field(None, description="水分記録。水分摂取の内容や量。")
-    urine_count: Optional[int] = Field(None, description="尿回数。")
-    stool_count: Optional[int] = Field(None, description="便回数。")
+    urine_count: Optional[int] = Field(None, description="尿回数。「尿1回」などの数値のほか、「尿プラス」「尿＋」「尿出た」「尿あり」といった表現や、「両方プラス」「尿便プラス」のように尿が含まれる表現の場合も 1（指定数）として出力します。言及がない場合は null。")
+    stool_count: Optional[int] = Field(None, description="便回数。「便1回」などの数値のほか、「便プラス」「便＋」「便出た」「排便あり」といった表現や、「両方プラス」「尿便プラス」のように便が含まれる表現の場合も 1（指定数）として出力します。言及がない場合は null。")
     rehab_status: Optional[str] = Field(None, description="リハビリ実施。実施した文脈があれば「〇」、なければ null。")
     bath_status: Optional[str] = Field(None, description="入浴実施。実施した文脈があれば「〇」、なければ null。")
     suction_count: Optional[int] = Field(None, description="吸引回数。")
@@ -259,6 +259,23 @@ def fallback_rule_based_parser(text: str, user_master: List[UserMasterEntry], cu
     if "入浴" in text or "お風呂" in text:
         result["bath_status"] = "〇"
 
+    # 6. 排泄抽出 (尿・便の回数 / プラス表現)
+    if "両方プラス" in text or "両方＋" in text or "尿便プラス" in text or "尿便＋" in text or ("尿" in text and "便" in text and ("プラス" in text or "＋" in text)):
+        result["urine_count"] = 1
+        result["stool_count"] = 1
+    else:
+        urine_match = re.search(r"尿\s*(\d+)回", text)
+        if urine_match:
+            result["urine_count"] = int(urine_match.group(1))
+        elif "尿プラス" in text or "尿＋" in text or "尿がプラス" in text or "尿あり" in text or "尿出た" in text:
+            result["urine_count"] = 1
+
+        stool_match = re.search(r"便\s*(\d+)回", text)
+        if stool_match:
+            result["stool_count"] = int(stool_match.group(1))
+        elif "便プラス" in text or "便＋" in text or "便がプラス" in text or "排便あり" in text or "便出た" in text:
+            result["stool_count"] = 1
+
     return result
 
 # --- エンドポイント実装 ---
@@ -293,6 +310,7 @@ async def analyze_text(request: AnalyzeRequest):
 9. `bath_status` (入浴実施): 実施の文脈（お風呂に入った、入浴した等）があれば「〇」を出力してください。それ以外は null。
 10. `seizure_log` (発作記録) / `medication_status` (投薬処置) / `remarks` (備考): 福祉・看護の公的記録にふさわしい専門的な文章（常体：「〜である」「〜を行う」）として個別に文章を抽出してください。
 11. `bp` (血圧): テキスト内に具体的な血圧数値（「血圧 120の80」など）が含まれていない場合は【必ず null】を出力してください。推測やデフォルト値の出力は禁止です。
+12. `urine_count` (尿回数) / `stool_count` (便回数): 「尿1回」「便2回」などの具体的な回数表現のほか、「尿プラス」「尿＋」「尿出た」等の表現は `urine_count` を 1 としてください。「便プラス」「便＋」「排便あり」等の表現は `stool_count` を 1 としてください。「尿と便、両方プラス」「両方＋」「尿便プラス」のように両方が含まれる表現の場合は `urine_count`: 1 かつ `stool_count`: 1 の両方を抽出してください。
 
 【利用者マスタ情報】
 {user_master_str}
